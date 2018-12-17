@@ -1,5 +1,3 @@
-using System;
-using Autofac;
 using DShop.Common.Types;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,44 +7,39 @@ namespace DShop.Common.Mongo
 {
     public static class Extensions
     {
-        public static void AddMongo(this ContainerBuilder builder)
+        public static void AddMongo(this IServiceCollection services)
         {
-            builder.Register(context =>
+            services.AddSingleton(serviceProvider =>
             {
-                var configuration = context.Resolve<IConfiguration>();
+                var configuration = serviceProvider.GetService<IConfiguration>();
                 var options = configuration.GetOptions<MongoDbOptions>("mongo");
 
                 return options;
-            }).SingleInstance();
+            });
 
-            builder.Register(context =>
+            services.AddSingleton(serviceProvider =>
             {
-                var options = context.Resolve<MongoDbOptions>();
+                var options = serviceProvider.GetService<MongoDbOptions>();
 
                 return new MongoClient(options.ConnectionString);
-            }).SingleInstance();
+            });
 
-            builder.Register(context =>
+            services.AddScoped(context =>
             {
-                var options = context.Resolve<MongoDbOptions>();
-                var client = context.Resolve<MongoClient>();
+                var options = context.GetService<MongoDbOptions>();
+                var client = context.GetService<MongoClient>();
                 return client.GetDatabase(options.Database);
 
-            }).InstancePerLifetimeScope();
+            });
 
-            builder.RegisterType<MongoDbInitializer>()
-                .As<IMongoDbInitializer>()
-                .InstancePerLifetimeScope();
+            services.AddScoped<IMongoDbInitializer, MongoDbInitializer>();
 
-            builder.RegisterType<MongoDbSeeder>()
-                .As<IMongoDbSeeder>()
-                .InstancePerLifetimeScope();
+            services.AddScoped<IMongoDbSeeder, MongoDbSeeder>();
         }
 
-        public static void AddMongoRepository<TEntity>(this ContainerBuilder builder, string collectionName)
+        public static void AddMongoRepository<TEntity>(this IServiceCollection services, string collectionName)
             where TEntity : IIdentifiable
-            => builder.Register(ctx => new MongoRepository<TEntity>(ctx.Resolve<IMongoDatabase>(), collectionName))
-                .As<IMongoRepository<TEntity>>()
-                .InstancePerLifetimeScope();
+            => services.AddScoped<IMongoRepository<TEntity>>(ctx =>
+                new MongoRepository<TEntity>(ctx.GetService<IMongoDatabase>(), collectionName));
     }
 }

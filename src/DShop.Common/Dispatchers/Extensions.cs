@@ -1,14 +1,14 @@
-using Autofac;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DShop.Common.Dispatchers
 {
     public static class Extensions
     {
-        public static void AddDispatchers(this ContainerBuilder builder)
+        public static void AddDispatchers(this IServiceCollection services)
         {
-            builder.RegisterType<CommandDispatcher>().As<ICommandDispatcher>();
-            builder.RegisterType<Dispatcher>().As<IDispatcher>();
-            builder.RegisterType<QueryDispatcher>().As<IQueryDispatcher>();
+            services.AddScoped<ICommandDispatcher, CommandDispatcher>();
+            services.AddScoped<IDispatcher, Dispatcher>();
+            services.AddScoped<IQueryDispatcher, QueryDispatcher>();
         }
     }
 }

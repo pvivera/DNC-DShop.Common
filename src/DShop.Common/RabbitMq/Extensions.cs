@@ -1,10 +1,10 @@
 using System;
 using System.Reflection;
-using Autofac;
 using DShop.Common.Handlers;
 using DShop.Common.Messages;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using RawRabbit;
 using RawRabbit.Common;
 using RawRabbit.Configuration;
@@ -18,45 +18,42 @@ namespace DShop.Common.RabbitMq
         public static IBusSubscriber UseRabbitMq(this IApplicationBuilder app)
             => new BusSubscriber(app);
 
-        public static void AddRabbitMq(this ContainerBuilder builder)
+        public static void AddRabbitMq(this IServiceCollection serviceCollection)
         {
-            builder.Register(context =>
+            serviceCollection.AddSingleton(context =>
             {
-                var configuration = context.Resolve<IConfiguration>();
+                var configuration = context.GetService<IConfiguration>();
                 var options = configuration.GetOptions<RabbitMqOptions>("rabbitMq");
 
                 return options;
-            }).SingleInstance();
-            
-            builder.Register(context =>
+            });
+
+            serviceCollection.AddSingleton(context =>
             {
-                var configuration = context.Resolve<IConfiguration>();
+                var configuration = context.GetService<IConfiguration>();
                 var options = configuration.GetOptions<RawRabbitConfiguration>("rabbitMq");
 
                 return options;
-            }).SingleInstance();
+            });
 
-            var assembly = Assembly.GetCallingAssembly();
-            builder.RegisterAssemblyTypes(assembly)
-                .AsClosedTypesOf(typeof(IEventHandler<>))
-                .InstancePerDependency();
-            builder.RegisterAssemblyTypes(assembly)
-                .AsClosedTypesOf(typeof(ICommandHandler<>))
-                .InstancePerDependency();
-            builder.RegisterType<Handler>().As<IHandler>()
-                .InstancePerDependency();
-            builder.RegisterType<BusPublisher>().As<IBusPublisher>()
-                .InstancePerDependency();
+            serviceCollection.Scan(scan => scan
+                .FromCallingAssembly()
+                .AddClasses(classes=>classes.AssignableTo(typeof(IEventHandler<>))).AsImplementedInterfaces().WithTransientLifetime()
+                .AddClasses(classes => classes.AssignableTo(typeof(ICommandHandler<>))).AsImplementedInterfaces().WithTransientLifetime()
+            );
 
-            ConfigureBus(builder);
+            serviceCollection.AddTransient<IHandler, Handler>();
+            serviceCollection.AddTransient<IBusPublisher, BusPublisher>();
+
+            ConfigureBus(serviceCollection);
         }
 
-        private static void ConfigureBus(ContainerBuilder builder)
+        private static void ConfigureBus(IServiceCollection serviceCollection)
         {
-            builder.Register<IInstanceFactory>(context =>
+            serviceCollection.AddSingleton<IInstanceFactory>(context =>
             {
-                var options = context.Resolve<RabbitMqOptions>();
-                var configuration = context.Resolve<RawRabbitConfiguration>();
+                var options = context.GetService<RabbitMqOptions>();
+                var configuration = context.GetService<RawRabbitConfiguration>();
                 var namingConventions = new CustomNamingConventions(options.Namespace);
 
                 return RawRabbitFactory.CreateInstanceFactory(new RawRabbitOptions
@@ -72,8 +69,9 @@ namespace DShop.Common.RabbitMq
                         .UseMessageContext<CorrelationContext>()
                         .UseContextForwarding()
                 });
-            }).SingleInstance();
-            builder.Register(context => context.Resolve<IInstanceFactory>().Create());
+            });
+
+            serviceCollection.AddScoped(context => context.GetService<IInstanceFactory>().Create());
         }
 
         private class CustomNamingConventions : NamingConventions

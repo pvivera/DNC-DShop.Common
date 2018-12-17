@@ -1,16 +1,15 @@
-using System;
 using System.Threading.Tasks;
-using Autofac;
 using DShop.Common.Handlers;
 using DShop.Common.Types;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace DShop.Common.Dispatchers
 {
     public class QueryDispatcher : IQueryDispatcher
     {
-        private readonly IComponentContext _context;
+        private readonly IServiceScope _context;
 
-        public QueryDispatcher(IComponentContext context)
+        public QueryDispatcher(IServiceScope context)
         {
             _context = context;
         }
@@ -20,7 +19,7 @@ namespace DShop.Common.Dispatchers
             var handlerType = typeof(IQueryHandler<,>)
                 .MakeGenericType(query.GetType(), typeof(TResult));
 
-            dynamic handler = _context.Resolve(handlerType);
+            dynamic handler = _context.ServiceProvider.GetService(handlerType);
 
             return await handler.HandleAsync((dynamic)query);
         }
