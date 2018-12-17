@@ -7,9 +7,9 @@ namespace DShop.Common.MailKit
     {
         public static void AddMailKit(this IServiceCollection services)
         {
-            services.AddSingleton(serviceProvider =>
+            services.AddSingleton(context =>
             {
-                var configuration = serviceProvider.GetService<IConfiguration>();
+                var configuration = context.GetService<IConfiguration>();
 
                 var options = configuration.GetOptions<MailKitOptions>("mailkit");
 

@@ -14,5 +14,6 @@ namespace DShop.Common.RabbitMq
         string Resource { get; }
         string Culture { get; }
         DateTime CreatedAt { get; }
+        int Retries { get; set; }
     }
 }

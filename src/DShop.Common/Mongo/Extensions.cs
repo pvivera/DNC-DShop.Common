@@ -9,17 +9,17 @@ namespace DShop.Common.Mongo
     {
         public static void AddMongo(this IServiceCollection services)
         {
-            services.AddSingleton(serviceProvider =>
+            services.AddSingleton(context =>
             {
-                var configuration = serviceProvider.GetService<IConfiguration>();
+                var configuration = context.GetService<IConfiguration>();
                 var options = configuration.GetOptions<MongoDbOptions>("mongo");
 
                 return options;
             });
 
-            services.AddSingleton(serviceProvider =>
+            services.AddSingleton(context =>
             {
-                var options = serviceProvider.GetService<MongoDbOptions>();
+                var options = context.GetService<MongoDbOptions>();
 
                 return new MongoClient(options.ConnectionString);
             });

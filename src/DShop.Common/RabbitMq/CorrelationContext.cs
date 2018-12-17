@@ -14,15 +14,21 @@ namespace DShop.Common.RabbitMq
         public string Origin { get; }
         public string Resource { get; }
         public string Culture { get; }
+        public int Retries { get; set; }
         public DateTime CreatedAt { get; }
 
         public CorrelationContext()
         {
         }
 
+        private CorrelationContext(Guid id)
+        {
+            Id = id;
+        }
+
         [JsonConstructor]
         private CorrelationContext(Guid id, Guid userId, Guid resourceId, string traceId,
-            string connectionId, string name, string origin, string culture, string resource)
+            string connectionId, string executionId, string name, string origin, string culture, string resource, int retries)
         {
             Id = id;
             UserId = userId;
@@ -34,20 +40,24 @@ namespace DShop.Common.RabbitMq
                 origin.StartsWith("/") ? origin.Remove(0, 1) : origin;
             Culture = culture;
             Resource = resource;
+            Retries = retries;
             CreatedAt = DateTime.UtcNow;
         }
 
         public static ICorrelationContext Empty
             => new CorrelationContext();
+        
+        public static ICorrelationContext FromId(Guid id)
+            => new CorrelationContext(id);
 
         public static ICorrelationContext From<T>(ICorrelationContext context)
             => Create<T>(context.Id, context.UserId, context.ResourceId, context.TraceId, context.ConnectionId,
                 context.Origin, context.Culture, context.Resource);
-
+        
         public static ICorrelationContext Create<T>(Guid id, Guid userId, Guid resourceId, string origin,
             string traceId, string connectionId, string culture, string resource = "")
-            => new CorrelationContext(id, userId, resourceId, traceId, connectionId, typeof(T).Name, origin, culture,
-                resource);
+            => new CorrelationContext(id, userId, resourceId, traceId, connectionId, string.Empty, typeof(T).Name, origin, culture,
+                resource, 0);
 
         private static string GetName(string name)
             => name.Underscore().ToLowerInvariant();
